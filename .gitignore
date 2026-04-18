@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.swp
+*.swo
+.DS_Store
+
+.server_manager_state.json
+.server_manager_trash/
+
+.env
+.venv/
+venv/
+
+dist/
+build/
+*.egg-info/
