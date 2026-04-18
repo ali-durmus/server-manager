@@ -63,7 +63,6 @@ This project is primarily designed for:
 
 ### Quick install
 
-```bash
 git clone https://github.com/ali-durmus/server-manager.git
 cd server-manager
 chmod +x install.sh
