@@ -4,6 +4,13 @@ A terminal-based server management and file operations tool for Linux systems.
 
 `Server Manager` is a curses-based TUI application that combines:
 
+### Main screen
+![Main screen](screenshots/main.png)
+
+### Admin menu
+![Admin menu](screenshots/admin.png)
+
+
 - file browsing
 - file previews and editing
 - copy/move/archive/extract operations
