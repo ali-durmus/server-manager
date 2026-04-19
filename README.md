@@ -68,21 +68,21 @@ cd server-manager
 chmod +x install.sh
 ./install.sh
 
-###After installation, run:
+### After installation, run:
 
 server-manager
 
-###Manual run
+### Manual run
 
 You can also run it directly without installing:
 
 python3 server_manager.py
 
-###Uninstall
+### Uninstall
 
 ./uninstall.sh
 
-##Notes
+## Notes
 
 Some actions may require root privileges.
 On some systems, commands such as docker, smartctl, ufw, firewall-cmd, journalctl, or systemctl may not be available.
@@ -116,13 +116,13 @@ M permissions
 S search inside files
 / jump to first match in current directory
 
-##Security / Safety
+## Security / Safety
 
 This tool is intended for trusted Linux server environments.
 
 Please review the code before using it in production. Some operations execute shell commands and some archive extraction logic may be improved in future versions for stricter safety.
 
-##Roadmap
+## Roadmap
 
 Planned future improvements:
 
@@ -135,5 +135,5 @@ batch operations
 improved non-root handling
 packaging as a proper Python package
 
-##License
+## License
 MIT
