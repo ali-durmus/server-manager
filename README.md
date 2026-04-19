@@ -68,17 +68,17 @@ cd server-manager
 chmod +x install.sh
 ./install.sh
 
-##After installation, run:
+###After installation, run:
 
 server-manager
 
-##Manual run
+###Manual run
 
 You can also run it directly without installing:
 
 python3 server_manager.py
 
-##Uninstall
+###Uninstall
 
 ./uninstall.sh
 
