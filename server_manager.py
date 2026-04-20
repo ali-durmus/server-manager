@@ -787,6 +787,7 @@ class ServerManager:
             "F4      Edit",
             "F5/F6   Copy/Move",
             "F7      New dir",
+            "N       Create new file",
             "F8      Delete",
             "F9      Admin",
             "P       Paste",
@@ -812,35 +813,23 @@ class ServerManager:
         for line in panel:
             out.extend(wrap_text(line, max(10, right_w - 2)))
 
-        desired_live_top = info_top_y + len(out) + 1
-        min_live_top = max(16, h // 2)
-        live_top_y = max(min_live_top, desired_live_top)
+        self.update_live_metrics()
 
-        if live_top_y > h - 10:
-            live_top_y = h - 10
+        footer_top_y = h - 3
+        if footer_top_y < info_top_y + 3:
+            footer_top_y = info_top_y + 3
 
-        info_rows = max(1, live_top_y - info_top_y - 1)
+        info_rows = max(1, footer_top_y - info_top_y)
         for i, line in enumerate(out[:info_rows], start=info_top_y):
             safe_addstr(self.stdscr, i, right_x + 1, line)
 
-        safe_addstr(
-            self.stdscr,
-            live_top_y,
-            right_x + 1,
-            "-" * max(1, right_w - 2),
-            cpair(2),
-        )
 
-        live_height = max(8, h - live_top_y - 5)
-        self.draw_live_panel(
-            live_top_y + 1,
-            right_x + 1,
-            max(10, right_w - 2),
-            live_height,
-            " Live Resources ",
+        metrics_line = "CPU {:4.1f}% | RAM {:4.1f}%".format(
+            self.live_metrics["cpu_pct"],
+            self.live_metrics["ram_pct"],
         )
-
-        safe_addstr(self.stdscr, h - 3, right_x + 1, "terminalnotes.com", cpair(8))
+        safe_addstr(self.stdscr, h - 4, right_x + 1, "terminalnotes.com", cpair(8))
+        safe_addstr(self.stdscr, h - 3, right_x + 1, metrics_line, cpair(9) | curses.A_BOLD)
 
         footer = " ← parent | → open | Enter actions | PgUp/PgDn | Home/End | / find | F9 admin | F10 quit "
         safe_addstr(self.stdscr, h - 1, 0, footer.ljust(w - 1), cpair(2))
@@ -910,6 +899,49 @@ class ServerManager:
         try:
             os.makedirs(os.path.join(self.current_dir, name), exist_ok=False)
             self.ui.set_status("Directory created")
+        except Exception as e:
+            self.ui.message("Error: " + str(e), 1.2, "Error")
+
+    def create_file(self):
+        name = self.ui.prompt("New file name", "test.txt")
+        if not name:
+            return
+
+        name = name.strip()
+        path = os.path.join(self.current_dir, name)
+
+        if os.path.exists(path):
+            self.ui.message("File already exists.", 1.2, "Error")
+            return
+
+        try:
+            parent = os.path.dirname(path)
+            if parent and not os.path.exists(parent):
+                os.makedirs(parent, exist_ok=True)
+
+            with open(path, "w", encoding="utf-8") as f:
+                pass
+
+            self.ui.set_status("File created: " + name)
+
+            if self.ui.confirm("File created.\n\nOpen in editor now?\n\n" + path, "Open file"):
+                editor = os.environ.get("EDITOR", "nano")
+                cmd = [editor, path]
+                if os.path.basename(editor) == "nano":
+                    cmd = [editor, "-l", path]
+
+                curses.def_prog_mode()
+                curses.endwin()
+                try:
+                    subprocess.run(cmd)
+                finally:
+                    curses.reset_prog_mode()
+                    curses.curs_set(0)
+                    self.stdscr.keypad(True)
+                    self.stdscr.erase()
+                    self.stdscr.refresh()
+                    self.ui.set_status("Returned from editor")
+
         except Exception as e:
             self.ui.message("Error: " + str(e), 1.2, "Error")
 
@@ -1679,6 +1711,7 @@ class ServerManager:
             "F8          Delete menu",
             "F9          Admin menu",
             "F10         Quit",
+            "N           Create new file",
             "S           Search inside files",
             "M           Permissions",
             "",
@@ -2417,15 +2450,17 @@ class ServerManager:
             idx = self.browse_menu(
                 "dir_actions",
                 "Directory actions",
-                ["Go up", "Create new directory", "Paste here", "Cancel"],
+                ["Go up", "Create new directory", "Create new file", "Paste here", "Cancel"],
             )
-            if idx is None or idx == 3:
+            if idx is None or idx == 4:
                 return
             if idx == 0:
                 self.go_parent()
             elif idx == 1:
                 self.create_folder()
             elif idx == 2:
+                self.create_file()
+            elif idx == 3:
                 self.paste_here()
             return
 
@@ -2435,7 +2470,7 @@ class ServerManager:
         if os.path.isfile(path) and is_text_file(path):
             options.append("View")
             options.append("Edit")
-        options.extend(["Rename", "Permissions", "Copy", "Move", "Paste here"])
+        options.extend(["Rename", "Permissions", "Copy", "Move", "Create new file here", "Paste here"])
         if os.path.isfile(path) and can_extract(path):
             options.append("Extract")
         if can_archive(path):
@@ -2465,6 +2500,8 @@ class ServerManager:
             self.paste_here()
         elif action == "Delete":
             self.delete_menu()
+        elif action == "Create new file here":
+            self.create_file()
         elif action == "Extract":
             self.extract_selected()
         elif action == "Archive":
@@ -2527,14 +2564,8 @@ class ServerManager:
                     self.queue_clipboard("move")
                 elif ch == curses.KEY_F7:
                     self.create_folder()
-                elif ch == curses.KEY_F8:
-                    self.delete_menu()
-                elif ch == ord("m") or ch == ord("M"):
-                    self.permissions_menu()
-                elif ch == ord("s") or ch == ord("S"):
-                    self.content_search()
-                elif ch == curses.KEY_F9 or ch in (ord("a"), ord("A")):
-                    self.admin_menu()
+                elif ch in (ord("n"), ord("N")):
+                    self.create_file()
                 elif ch == curses.KEY_F8:
                     self.delete_menu()
                 elif ch == ord("m") or ch == ord("M"):
